@@ -16,6 +16,50 @@ const Chatbot = () => {
         }
     }, [messages]);
 
+    useEffect(() => {
+        let visitorId = localStorage.getItem("visitorId");
+
+        if (!visitorId) {
+
+            visitorId = Date.now().toString();
+            localStorage.setItem("visitorId", visitorId);
+
+            let visitCount = parseInt(localStorage.getItem("visitorCount")) || 0;
+            visitCount += 1;
+            localStorage.setItem("visitorCount", visitCount);
+        }
+
+        console.log("Unique visitors count:", localStorage.getItem("visitorCount"));
+
+
+        const trackPageVisit = () => {
+            let currentPage = window.location.href;
+            let visitedPages = JSON.parse(localStorage.getItem("visitedPages")) || [];
+
+            let lastVisit = visitedPages.length > 0 ? visitedPages[visitedPages.length - 1] : null;
+            let now = new Date();
+
+            if (!lastVisit || lastVisit.page !== currentPage || (now - new Date(lastVisit.time)) > 10000) {
+                visitedPages.push({ page: currentPage, time: now.toISOString() });
+                localStorage.setItem("visitedPages", JSON.stringify(visitedPages));
+            }
+
+            console.log("Visited Pages:", visitedPages);
+        };
+
+        trackPageVisit();
+        window.addEventListener("popstate", trackPageVisit);
+        window.addEventListener("hashchange", trackPageVisit);
+
+        return () => {
+            window.removeEventListener("popstate", trackPageVisit);
+            window.removeEventListener("hashchange", trackPageVisit);
+        };
+    }, []);
+
+
+
+
     const handleSend = () => {
         if (!input.trim()) return;
 
@@ -56,6 +100,8 @@ const Chatbot = () => {
         ]);
         setFormData({ name: "", email: "", service: "" });
     };
+
+
 
     return (
         <>
@@ -183,7 +229,7 @@ const Chatbot = () => {
                                         <input
                                             type="text"
                                             name="name"
-                                            placeholder="Your Name"
+                                            placeholder="Your Name ..."
                                             required
                                             className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm transition-all duration-200"
                                             onChange={handleInputChange}
@@ -191,7 +237,7 @@ const Chatbot = () => {
                                         <input
                                             type="email"
                                             name="email"
-                                            placeholder="Your Email"
+                                            placeholder="Your Email ..."
                                             required
                                             className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm transition-all duration-200"
                                             onChange={handleInputChange}
