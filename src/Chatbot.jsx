@@ -20,25 +20,19 @@ const Chatbot = () => {
         useEffect(() => {
             let visitorData = { visitedPages: [], country: null };
     
-            // Fetch Country Data
             const fetchCountry = async () => {
                 try {
                     console.log("Fetching country...");
-                    const res = await fetch("http://ip-api.com/json"); // Use HTTP
+                    const res = await fetch("https://api.country.is/");
                     const data = await res.json();
-                    console.log("API Response:", data);
-    
-                    if (data.status === "success" && data.country) {
-                        visitorData.country = data.country;
-                        console.log("User Country:", visitorData.country);
-                    } else {
-                        console.warn("Failed to fetch country data");
-                    }
+                    console.log("User Country:", data.country);
                 } catch (error) {
                     console.error("Error fetching country:", error);
                 }
             };
             fetchCountry();
+            
+            
     
             // Function to Track Page Visits
             const trackPageVisit = (pageURL) => {
