@@ -16,53 +16,48 @@ const Chatbot = () => {
         }
     }, [messages]);
 
+    const useVisitorTracking = () => {
+        useEffect(() => {
+            let visitorId = localStorage.getItem("visitorId");
 
+            if (!visitorId) {
+                visitorId = Date.now().toString();
+                localStorage.setItem("visitorId", visitorId);
 
-    useEffect(() => {
-        let visitorId = localStorage.getItem("visitorId");
-
-        if (!visitorId) {
-            visitorId = Date.now().toString();
-            localStorage.setItem("visitorId", visitorId);
-
-            let visitCount = parseInt(localStorage.getItem("visitorCount")) || 0;
-            visitCount += 1;
-            localStorage.setItem("visitorCount", visitCount);
-        }
-
-        console.log("Unique visitors count:", localStorage.getItem("visitorCount"));
-
-        const trackPageVisit = () => {
-            let currentPage = window.top.location.pathname; // Get the parent page's URL
-            let visitedPages = JSON.parse(localStorage.getItem("visitedPages")) || [];
-        
-            let lastVisit = visitedPages.length > 0 ? visitedPages[visitedPages.length - 1] : null;
-            let now = new Date();
-        
-            if (!lastVisit || lastVisit.page !== currentPage || (now - new Date(lastVisit.time)) > 10000) {
-                visitedPages.push({ page: currentPage, time: now.toISOString() });
-                localStorage.setItem("visitedPages", JSON.stringify(visitedPages));
+                let visitCount = parseInt(localStorage.getItem("visitorCount")) || 0;
+                visitCount += 1;
+                localStorage.setItem("visitorCount", visitCount);
             }
-        
-            console.log("Visited Pages:", visitedPages);
-        };
-        
 
-        trackPageVisit();
-        window.addEventListener("popstate", trackPageVisit);
-        window.addEventListener("hashchange", trackPageVisit);
+            console.log("Unique visitors count:", localStorage.getItem("visitorCount"));
 
-        return () => {
-            window.removeEventListener("popstate", trackPageVisit);
-            window.removeEventListener("hashchange", trackPageVisit);
-        };
-    }, []);
+            const trackPageVisit = (pageURL) => {
+                let visitedPages = JSON.parse(localStorage.getItem("visitedPages")) || [];
+                let now = new Date();
 
+                let lastVisit = visitedPages.length > 0 ? visitedPages[visitedPages.length - 1] : null;
 
+                if (!lastVisit || lastVisit.page !== pageURL || (now - new Date(lastVisit.time)) > 10000) {
+                    visitedPages.push({ page: pageURL, time: now.toISOString() });
+                    localStorage.setItem("visitedPages", JSON.stringify(visitedPages));
+                }
 
+                console.log("Visited Pages:", visitedPages);
+            };
 
+            // Track current page if chatbot is on the same site
+            trackPageVisit(window.location.href);
 
+            // Listen for messages from parent page (if embedded)
+            window.addEventListener("message", (event) => {
+                if (event.data && event.data.type === "PAGE_URL") {
+                    trackPageVisit(event.data.url);
+                }
+            }, false);
+        }, []);
+    };
 
+    useVisitorTracking();
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -86,74 +81,27 @@ const Chatbot = () => {
         };
         return responses[message.toLowerCase()] || "I'm not sure how to respond to that.";
     };
-    const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ name: "", email: "", service: "" });
-
-    const handleInputChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-
-        setShowForm(false);
-        setMessages((prev) => [
-            ...prev,
-            { sender: "user", text: "I submitted my details." },
-            { sender: "bot", text: "Thank you! We will contact you soon." }
-        ]);
-        setFormData({ name: "", email: "", service: "" });
-    };
-
-
 
     return (
         <>
             <div className="fixed bottom-6 right-6 flex flex-col items-end">
                 {!isOpen && (
-                    <div className="fixed bottom-6 right-6 flex flex-col items-center space-y-2">
-                        {/* Floating Text + Hand Wave */}
+                    <motion.button
+                        initial={{ y: 0 }}
+                        animate={{ y: [0, -5, 0] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                        whileHover={{ scale: 1.2, rotate: 5 }}
+                        className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg hover:scale-110 hover:shadow-xl transition-all duration-300"
+                        onClick={() => setIsOpen(true)}
+                    >
                         <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
-                            className="relative flex flex-col items-center"
+                            animate={{ rotate: [0, 5, -5, 0] }}
+                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                            className="w-12 h-12 flex items-center justify-center"
                         >
-                            <motion.div
-                                animate={{ rotate: [0, 10, -10, 0] }}
-                                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                                className="absolute -top-4 -left-5 text-xl"
-                            >
-                                👋
-                            </motion.div>
-                            <div className="text-sm font-bold text-blue-700 bg-white px-2 py-1 rounded-full shadow">
-                                Chat with us!
-                            </div>
+                            <img src={Bot} alt="Chatbot Icon" className="w-8 h-auto" />
                         </motion.div>
-
-                        {/* Chatbot Button */}
-                        <motion.button
-                            initial={{ y: 0 }}
-                            animate={{ y: [0, -5, 0] }}
-                            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                            whileHover={{ scale: 1.2, rotate: 5 }}
-                            className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg hover:scale-110 hover:shadow-xl transition-all duration-300 relative"
-                            onClick={() => setIsOpen(true)}
-                        >
-                            <motion.div
-                                animate={{ rotate: [0, 5, -5, 0] }}
-                                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                                className="w-12 h-12 flex items-center justify-center"
-                            >
-                                <img src={Bot} alt="Chatbot Icon" className="w-8 h-auto" />
-                            </motion.div>
-
-                            {/* Notification Badge */}
-                            <span className="absolute top-0 right-0 w-5 h-5 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                                1
-                            </span>
-                        </motion.button>
-                    </div>
+                    </motion.button>
                 )}
 
                 {isOpen && (
@@ -165,20 +113,12 @@ const Chatbot = () => {
                         className="flex flex-col h-[650px] w-[90vw] max-w-[400px] bg-gray-100 rounded-2xl shadow-2xl"
                     >
                         <div className="flex justify-between items-center bg-white text-black p-4 rounded-t-2xl">
-                            <div className="flex space-x-3">
-                                <div className="p-2 rounded hover:bg-gray-200 cursor-pointer">
-                                    <ArrowLeft size={20} />
-                                </div>
-                                <div className="p-2 rounded hover:bg-gray-200 cursor-pointer">
-                                    <Ellipsis size={20} />
-                                </div>
-                            </div>
                             <div className="p-2 rounded hover:bg-gray-200 cursor-pointer" onClick={() => setIsOpen(false)}>
                                 <X size={20} />
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-center bg-white py-2 mt-[-10px]">
+                        <div className="flex flex-col items-center bg-white py-2">
                             <motion.img
                                 initial={{ scale: 0.8 }}
                                 animate={{ scale: [0.8, 1, 0.8] }}
@@ -188,7 +128,7 @@ const Chatbot = () => {
                             <h1 className="font-bold mt-2 text-lg">Chatbot</h1>
                         </div>
 
-                        <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col scroll-smooth">
+                        <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                             {messages.map((msg, index) => (
                                 <motion.div
                                     key={index}
@@ -197,78 +137,15 @@ const Chatbot = () => {
                                     transition={{ duration: 0.3, delay: index * 0.1 }}
                                     className={`flex items-end space-x-2 w-max max-w-xs ${msg.sender === "user" ? "ml-auto flex-row-reverse" : ""}`}
                                 >
-                                    <img
-                                        src={msg.sender === "user" ? UserImage : Bot}
-                                        alt={msg.sender === "user" ? "User" : "Bot"}
-                                        className="w-10 h-10 rounded-full"
-                                    />
-                                    <div
-                                        className={`p-3 rounded-xl text-sm max-w-[75%] ${msg.sender === "user"
-                                            ? "bg-blue-600 text-white self-end shadow-md"
-                                            : "bg-gray-200 text-black self-start shadow"
-                                            }`}
-                                    >
+                                    <img src={msg.sender === "user" ? UserImage : Bot} alt="User" className="w-10 h-10 rounded-full" />
+                                    <div className={`p-3 rounded-xl text-sm max-w-[75%] ${msg.sender === "user" ? "bg-blue-600 text-white" : "bg-gray-200 text-black"}`}>
                                         {msg.text}
                                     </div>
                                 </motion.div>
                             ))}
                         </div>
-                        <div className="p-4">
-                            {!showForm ? (
-                                <button
-                                    className="w-full p-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
-                                    onClick={() => setShowForm(true)}
-                                >
-                                    Contact Support
-                                </button>
-                            ) : (
-                                <div className="bg-white p-4 rounded-lg shadow">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h3 className="text-lg font-bold mx-auto">Contact Support</h3>
-                                        <button className="p-2 rounded hover:bg-gray-200" onClick={() => setShowForm(false)}>
-                                            <X size={20} />
-                                        </button>
-                                    </div>
-                                    <form onSubmit={handleSubmit} className="space-y-3">
-                                        <input
-                                            type="text"
-                                            name="name"
-                                            placeholder="Your Name ..."
-                                            required
-                                            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm transition-all duration-200"
-                                            onChange={handleInputChange}
-                                        />
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            placeholder="Your Email ..."
-                                            required
-                                            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm transition-all duration-200"
-                                            onChange={handleInputChange}
-                                        />
-                                        <select
-                                            name="service"
-                                            required
-                                            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm transition-all duration-200"
-                                            onChange={handleInputChange}
-                                        >
-                                            <option value="">Select a Service</option>
-                                            <option value="UI/UX Design">UI/UX Design</option>
-                                            <option value="Web Development">Web Development</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                        <button
-                                            type="submit"
-                                            className="w-full p-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
-                                        >
-                                            Submit
-                                        </button>
-                                    </form>
-                                </div>
-                            )}
-                        </div>
 
-                        <div className="p-2 flex items-center rounded-lg mb-5 w-[350px] border border-gray-300 mx-auto">
+                        <div className="p-2 flex items-center border border-gray-300">
                             <input
                                 type="text"
                                 className="flex-1 p-2 bg-gray-100 text-black rounded-lg outline-none"
@@ -287,10 +164,7 @@ const Chatbot = () => {
                             </motion.button>
                         </div>
                     </motion.div>
-
                 )}
-
-
             </div>
         </>
     );
