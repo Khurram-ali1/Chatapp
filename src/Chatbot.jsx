@@ -18,44 +18,62 @@ const Chatbot = () => {
 
     const useVisitorTracking = () => {
         useEffect(() => {
-            let visitorId = localStorage.getItem("visitorId");
-
-            if (!visitorId) {
-                visitorId = Date.now().toString();
-                localStorage.setItem("visitorId", visitorId);
-
-                let visitCount = parseInt(localStorage.getItem("visitorCount")) || 0;
-                visitCount += 1;
-                localStorage.setItem("visitorCount", visitCount);
-            }
-
-            console.log("Unique visitors count:", localStorage.getItem("visitorCount"));
-
-            const trackPageVisit = (pageURL) => {
-                let visitedPages = JSON.parse(localStorage.getItem("visitedPages")) || [];
-                let now = new Date();
-
-                let lastVisit = visitedPages.length > 0 ? visitedPages[visitedPages.length - 1] : null;
-
-                if (!lastVisit || lastVisit.page !== pageURL || (now - new Date(lastVisit.time)) > 10000) {
-                    visitedPages.push({ page: pageURL, time: now.toISOString() });
-                    localStorage.setItem("visitedPages", JSON.stringify(visitedPages));
+            let visitorData = { visitedPages: [], country: null };
+    
+            // Fetch Country Data
+            const fetchCountry = async () => {
+                try {
+                    console.log("Fetching country...");
+                    const res = await fetch("http://ip-api.com/json"); // Use HTTP
+                    const data = await res.json();
+                    console.log("API Response:", data);
+    
+                    if (data.status === "success" && data.country) {
+                        visitorData.country = data.country;
+                        console.log("User Country:", visitorData.country);
+                    } else {
+                        console.warn("Failed to fetch country data");
+                    }
+                } catch (error) {
+                    console.error("Error fetching country:", error);
                 }
-
-                console.log("Visited Pages:", visitedPages);
             };
-
-            // Track current page if chatbot is on the same site
-            trackPageVisit(window.location.href);
-
-            // Listen for messages from parent page (if embedded)
+            fetchCountry();
+    
+            // Function to Track Page Visits
+            const trackPageVisit = (pageURL) => {
+                let now = new Date().toISOString();
+    
+                // Check if this page has already been visited
+                const isDuplicate = visitorData.visitedPages.some((entry) => entry.page === pageURL);
+                if (!isDuplicate) {
+                    visitorData.visitedPages.push({ page: pageURL, time: now });
+                    console.log("Visited Pages:", visitorData.visitedPages);
+                } else {
+                    console.log("Skipping duplicate visit:", pageURL);
+                }
+            };
+    
+            // Initial Visit
+            const currentPage = window.location.href;
+            console.log("Tracking visit for:", currentPage);
+            trackPageVisit(currentPage);
+    
+            // Listen for Page Changes
             window.addEventListener("message", (event) => {
                 if (event.data && event.data.type === "PAGE_URL") {
+                    console.log("Received page change:", event.data.url);
                     trackPageVisit(event.data.url);
                 }
-            }, false);
+            });
+    
         }, []);
     };
+    
+    
+    
+    
+    
 
     useVisitorTracking();
 
