@@ -16,11 +16,12 @@ const Chatbot = () => {
         }
     }, [messages]);
 
+
+
     useEffect(() => {
         let visitorId = localStorage.getItem("visitorId");
 
         if (!visitorId) {
-
             visitorId = Date.now().toString();
             localStorage.setItem("visitorId", visitorId);
 
@@ -31,21 +32,21 @@ const Chatbot = () => {
 
         console.log("Unique visitors count:", localStorage.getItem("visitorCount"));
 
-
         const trackPageVisit = () => {
-            let currentPage = window.location.href;
+            let currentPage = window.top.location.pathname; // Get the parent page's URL
             let visitedPages = JSON.parse(localStorage.getItem("visitedPages")) || [];
-
+        
             let lastVisit = visitedPages.length > 0 ? visitedPages[visitedPages.length - 1] : null;
             let now = new Date();
-
+        
             if (!lastVisit || lastVisit.page !== currentPage || (now - new Date(lastVisit.time)) > 10000) {
                 visitedPages.push({ page: currentPage, time: now.toISOString() });
                 localStorage.setItem("visitedPages", JSON.stringify(visitedPages));
             }
-
+        
             console.log("Visited Pages:", visitedPages);
         };
+        
 
         trackPageVisit();
         window.addEventListener("popstate", trackPageVisit);
@@ -56,6 +57,9 @@ const Chatbot = () => {
             window.removeEventListener("hashchange", trackPageVisit);
         };
     }, []);
+
+
+
 
 
 
