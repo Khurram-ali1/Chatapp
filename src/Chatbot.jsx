@@ -11,6 +11,7 @@ const useVisitorTracking = () => {
         let storedData = JSON.parse(localStorage.getItem("visitorData")) || { visitedPages: [], country: null };
         setVisitorData(storedData);
 
+        // Fetch user's country if not already stored
         const fetchCountry = async () => {
             if (!storedData.country) {
                 try {
@@ -26,6 +27,7 @@ const useVisitorTracking = () => {
         };
         fetchCountry();
 
+        // Function to track visited pages
         const trackPageVisit = (pageURL) => {
             if (!storedData.visitedPages.some((entry) => entry.page === pageURL)) {
                 storedData.visitedPages.push({ page: pageURL, time: new Date().toISOString() });
@@ -34,30 +36,25 @@ const useVisitorTracking = () => {
             }
         };
 
-        trackPageVisit(window.location.href);
+        // Message event listener to receive parent page URL
+        function handleMessage(event) {
+            console.log("Received message from:", event.origin, event.data);
 
-        useEffect(() => {
-            function handleMessage(event) {
-                // Ensure message is coming from the correct origin
-                if (event.origin !== "https://yourwebsite.com") return; 
-        
-                if (event.data.type === "PAGE_URL") {
-                    console.log("Tracking Page:", event.data.url);
-        
-                    // Save URL in visitorData state or database
-                    setVisitorData(prevData => ({
-                        ...prevData,
-                        visitedPages: [...prevData.visitedPages, { page: event.data.url, time: new Date().toISOString() }]
-                    }));
-                }
+            // Allow only messages from the parent site (adjust this accordingly)
+            if (!event.origin.includes("yourwebsite.com")) return;
+
+            if (event.data.type === "PAGE_URL") {
+                console.log("Tracking Page:", event.data.url);
+                trackPageVisit(event.data.url);
             }
-        
-            window.addEventListener("message", handleMessage);
-        
-            return () => {
-                window.removeEventListener("message", handleMessage);
-            };
-        }, []);
+        }
+
+        window.addEventListener("message", handleMessage);
+
+        return () => {
+            window.removeEventListener("message", handleMessage);
+        };
+    }, []);
 
     return visitorData;
 };
