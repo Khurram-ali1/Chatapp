@@ -4,78 +4,71 @@ import { motion } from "framer-motion";
 import Bot from './assets/bot.png';
 import UserImage from './assets/user.jpg';
 
+const useVisitorTracking = () => {
+    const [visitorData, setVisitorData] = useState({ visitedPages: [], country: null });
+
+    useEffect(() => {
+        let storedData = JSON.parse(localStorage.getItem("visitorData")) || { visitedPages: [], country: null };
+        setVisitorData(storedData);
+
+        const fetchCountry = async () => {
+            if (!storedData.country) {
+                try {
+                    const res = await fetch("https://api.country.is/");
+                    const data = await res.json();
+                    storedData.country = data.country;
+                    localStorage.setItem("visitorData", JSON.stringify(storedData));
+                    setVisitorData({ ...storedData });
+                } catch (error) {
+                    console.error("Error fetching country:", error);
+                }
+            }
+        };
+        fetchCountry();
+
+        const trackPageVisit = (pageURL) => {
+            if (!storedData.visitedPages.some((entry) => entry.page === pageURL)) {
+                storedData.visitedPages.push({ page: pageURL, time: new Date().toISOString() });
+                localStorage.setItem("visitorData", JSON.stringify(storedData));
+                setVisitorData({ ...storedData });
+            }
+        };
+
+        trackPageVisit(window.location.href);
+
+        const handleMessage = (event) => {
+            if (event.data && event.data.type === "PAGE_URL") {
+                trackPageVisit(event.data.url);
+            }
+        };
+
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
+    }, []);
+
+    return visitorData;
+};
+
 const Chatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState([{ sender: "bot", text: "Hello! How can I help you?" }]);
+    const [messages, setMessages] = useState(() => {
+        return JSON.parse(localStorage.getItem("chatMessages")) || [{ sender: "bot", text: "Hello! How can I help you?" }];
+    });
     const [input, setInput] = useState("");
     const chatRef = useRef(null);
+    useVisitorTracking();
 
     useEffect(() => {
         if (chatRef.current) {
             chatRef.current.scrollTop = chatRef.current.scrollHeight;
         }
+        localStorage.setItem("chatMessages", JSON.stringify(messages));
     }, [messages]);
-
-    const useVisitorTracking = () => {
-        useEffect(() => {
-            let visitorData = { visitedPages: [], country: null };
-    
-            const fetchCountry = async () => {
-                try {
-                    console.log("Fetching country...");
-                    const res = await fetch("https://api.country.is/");
-                    const data = await res.json();
-                    console.log("User Country:", data.country);
-                } catch (error) {
-                    console.error("Error fetching country:", error);
-                }
-            };
-            fetchCountry();
-            
-            
-    
-            // Function to Track Page Visits
-            const trackPageVisit = (pageURL) => {
-                let now = new Date().toISOString();
-    
-                // Check if this page has already been visited
-                const isDuplicate = visitorData.visitedPages.some((entry) => entry.page === pageURL);
-                if (!isDuplicate) {
-                    visitorData.visitedPages.push({ page: pageURL, time: now });
-                    console.log("Visited Pages:", visitorData.visitedPages);
-                } else {
-                    console.log("Skipping duplicate visit:", pageURL);
-                }
-            };
-    
-            // Initial Visit
-            const currentPage = window.location.href;
-            console.log("Tracking visit for:", currentPage);
-            trackPageVisit(currentPage);
-    
-            // Listen for Page Changes
-            window.addEventListener("message", (event) => {
-                if (event.data && event.data.type === "PAGE_URL") {
-                    console.log("Received page change:", event.data.url);
-                    trackPageVisit(event.data.url);
-                }
-            });
-    
-        }, []);
-    };
-    
-    
-    
-    
-    
-
-    useVisitorTracking();
 
     const handleSend = () => {
         if (!input.trim()) return;
-
         const userMessage = { sender: "user", text: input.trim() };
-        setMessages([...messages, userMessage]);
+        setMessages((prev) => [...prev, userMessage]);
         setInput("");
 
         setTimeout(() => {
