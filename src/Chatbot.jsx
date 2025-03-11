@@ -36,15 +36,28 @@ const useVisitorTracking = () => {
 
         trackPageVisit(window.location.href);
 
-        const handleMessage = (event) => {
-            if (event.data && event.data.type === "PAGE_URL") {
-                trackPageVisit(event.data.url);
+        useEffect(() => {
+            function handleMessage(event) {
+                // Ensure message is coming from the correct origin
+                if (event.origin !== "https://yourwebsite.com") return; 
+        
+                if (event.data.type === "PAGE_URL") {
+                    console.log("Tracking Page:", event.data.url);
+        
+                    // Save URL in visitorData state or database
+                    setVisitorData(prevData => ({
+                        ...prevData,
+                        visitedPages: [...prevData.visitedPages, { page: event.data.url, time: new Date().toISOString() }]
+                    }));
+                }
             }
-        };
-
-        window.addEventListener("message", handleMessage);
-        return () => window.removeEventListener("message", handleMessage);
-    }, []);
+        
+            window.addEventListener("message", handleMessage);
+        
+            return () => {
+                window.removeEventListener("message", handleMessage);
+            };
+        }, []);
 
     return visitorData;
 };
