@@ -21,89 +21,104 @@ const useVisitorTracking = () => {
     visitorCount: 0,
   });
 
-  const getQueryParam = (param) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(param);
+  // Fetch visitor's IP address
+  const fetchIP = async () => {
+    try {
+      const response = await fetch("https://api.ipify.org?format=json");
+      const data = await response.json();
+      return data.ip || null; // Return the IP address
+    } catch (error) {
+      console.error("Error fetching IP:", error);
+      return null;
+    }
   };
 
-  // Fetch visitor's country based on IP using ip-api.com
+  // Fetch visitor's country based on IP
   const fetchCountry = async () => {
+    const ip = await fetchIP();
+    if (!ip) return null;
+
     try {
-      const response = await fetch("http://ip-api.com/json/");
+      const response = await fetch(`https://ipinfo.io/${ip}/json`);
       const data = await response.json();
-      return data.country || null; // Return the country name or null if not found
+      return data.country || null; // Return the country name
     } catch (error) {
       console.error("Error fetching country:", error);
       return null;
     }
   };
 
+  // Track page visits
+  const trackPageVisit = (pageURL) => {
+    console.log("Tracking page visit:", pageURL); // Debug log
+    const now = new Date().toISOString();
+  
+    setVisitorData((prev) => {
+      const updatedPages = Array.isArray(prev.visitedPages) ? prev.visitedPages : [];
+  
+      // Check if the page has already been visited
+      if (!updatedPages.some((entry) => entry.page === pageURL)) {
+        const newVisitedPages = [...updatedPages, { page: pageURL, time: now }];
+        const updatedData = { ...prev, visitedPages: newVisitedPages };
+  
+        // Update localStorage
+        localStorage.setItem("visitorData", JSON.stringify(updatedData));
+        return updatedData;
+      }
+      return prev;
+    });
+  };
   useEffect(() => {
-    const pageUrl = getQueryParam("page_url");
-    console.log(pageUrl);
+    console.log("Current page URL:", window.location.href); // Debug log
+    trackPageVisit(window.location.href);
   }, []);
 
   useEffect(() => {
-    let storedData = localStorage.getItem("visitorData");
-
+    // Initialize visitor data from localStorage
+    let storedData;
     try {
-      storedData = storedData
-        ? JSON.parse(storedData)
-        : { visitedPages: [], country: null, visitorCount: 0 };
+      storedData = JSON.parse(localStorage.getItem("visitorData")) || {
+        visitedPages: [],
+        country: null,
+        visitorCount: 0,
+      };
     } catch (error) {
       console.error("Error parsing visitor data:", error);
       storedData = { visitedPages: [], country: null, visitorCount: 0 };
     }
-
+  
     // Fetch and update country if not already set
     if (!storedData.country) {
       fetchCountry().then((country) => {
-        storedData.country = country;
-        localStorage.setItem("visitorData", JSON.stringify(storedData));
-        setVisitorData(storedData);
+        const updatedData = { ...storedData, country };
+        localStorage.setItem("visitorData", JSON.stringify(updatedData));
+        setVisitorData(updatedData);
       });
+    } else {
+      setVisitorData(storedData);
     }
-
+  
+    // Increment visitor count if it's the first visit
     if (!localStorage.getItem("visitorHasVisited")) {
       storedData.visitorCount = (storedData.visitorCount || 0) + 1;
       localStorage.setItem("visitorHasVisited", "true");
+      localStorage.setItem("visitorData", JSON.stringify(storedData));
+      setVisitorData(storedData);
     }
-
-    localStorage.setItem("visitorData", JSON.stringify(storedData));
-    setVisitorData(storedData);
-
-    const trackPageVisit = (pageURL) => {
-      let now = new Date().toISOString();
-
-      setVisitorData((prev) => {
-        const updatedPages = Array.isArray(prev?.visitedPages)
-          ? prev.visitedPages
-          : [];
-
-        if (!updatedPages.some((entry) => entry.page === pageURL)) {
-          const newVisitedPages = [
-            ...updatedPages,
-            { page: pageURL, time: now },
-          ];
-          const updatedData = { ...prev, visitedPages: newVisitedPages };
-
-          localStorage.setItem("visitorData", JSON.stringify(updatedData));
-          return updatedData;
-        }
-        return prev;
-      });
-    };
-
+  
+    // Track the current page visit
     trackPageVisit(window.location.href);
-
+  
+    // Listen for messages to track page visits from iframes or other sources
     const handleMessage = (event) => {
       if (event.data && event.data.type === "PAGE_URL") {
         trackPageVisit(event.data.url);
       }
     };
-
+  
     window.addEventListener("message", handleMessage);
-
+  
+    // Cleanup event listener
     return () => {
       window.removeEventListener("message", handleMessage);
     };
