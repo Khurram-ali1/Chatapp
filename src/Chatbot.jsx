@@ -29,7 +29,7 @@ const useVisitorTracking = () => {
   // Fetch visitor's country based on IP using ip-api.com
   const fetchCountry = async () => {
     try {
-      const response = await fetch("https://ip-api.com/json/");
+      const response = await fetch("http://ip-api.com/json/");
       const data = await response.json();
       return data.country || null; // Return the country name or null if not found
     } catch (error) {
@@ -652,3 +652,4 @@ const Chatbot = () => {
 };
 
 export default Chatbot;
+
