@@ -17,50 +17,49 @@ import UserImage from "./assets/user.jpg";
 const useVisitorTracking = () => {
   const [visitorData, setVisitorData] = useState({
     visitedPages: [],
+    ip: null, // Add IP address to the state
     country: null,
+    city: null,
     visitorCount: 0,
   });
 
-  // Fetch visitor's IP address
-  const fetchIP = async () => {
-    try {
-      const response = await fetch("https://api.ipify.org?format=json");
-      const data = await response.json();
-      return data.ip || null; // Return the IP address
-    } catch (error) {
-      console.error("Error fetching IP:", error);
-      return null;
-    }
-  };
-
-  // Fetch visitor's country based on IP
-  const fetchCountry = async () => {
-    const ip = await fetchIP();
-    if (!ip) return null;
+  // Fetch visitor's IP address, country, and city
+  const fetchUserLocation = async () => {
+    const token = "YOUR-TOKEN"; // Replace with your ipinfo.io token
 
     try {
-      const response = await fetch(`https://ipinfo.io/${ip}/json`);
+      // Fetch details for the user's IP address
+      const response = await fetch(`https://ipinfo.io/json?token=${token}`);
       const data = await response.json();
-      return data.country || null; // Return the country name
+
+      // Log the user's IP address, country, and city to the console
+      console.log("User IP Address:", data.ip);
+      console.log("User Country:", data.country);
+      console.log("User City:", data.city);
+
+      return {
+        ip: data.ip || null,
+        country: data.country || null,
+        city: data.city || null,
+      };
     } catch (error) {
-      console.error("Error fetching country:", error);
+      console.error("Error fetching user location:", error);
       return null;
     }
   };
 
   // Track page visits
   const trackPageVisit = (pageURL) => {
-    console.log("Tracking page visit:", pageURL); // Debug log
     const now = new Date().toISOString();
-  
+
     setVisitorData((prev) => {
       const updatedPages = Array.isArray(prev.visitedPages) ? prev.visitedPages : [];
-  
+
       // Check if the page has already been visited
       if (!updatedPages.some((entry) => entry.page === pageURL)) {
         const newVisitedPages = [...updatedPages, { page: pageURL, time: now }];
         const updatedData = { ...prev, visitedPages: newVisitedPages };
-  
+
         // Update localStorage
         localStorage.setItem("visitorData", JSON.stringify(updatedData));
         return updatedData;
@@ -68,6 +67,7 @@ const useVisitorTracking = () => {
       return prev;
     });
   };
+
   useEffect(() => {
     console.log("Current page URL:", window.location.href); // Debug log
     trackPageVisit(window.location.href);
@@ -79,52 +79,61 @@ const useVisitorTracking = () => {
     try {
       storedData = JSON.parse(localStorage.getItem("visitorData")) || {
         visitedPages: [],
+        ip: null, // Initialize IP address
         country: null,
+        city: null,
         visitorCount: 0,
       };
     } catch (error) {
       console.error("Error parsing visitor data:", error);
-      storedData = { visitedPages: [], country: null, visitorCount: 0 };
+      storedData = { visitedPages: [], ip: null, country: null, city: null, visitorCount: 0 };
     }
-  
+
     // Check if it's the first visit
     if (!localStorage.getItem("visitorHasVisited")) {
       // Increment visitor count for the first visit
       storedData.visitorCount = (storedData.visitorCount || 0) + 1;
       localStorage.setItem("visitorHasVisited", "true"); // Set the flag
     }
-  
-    // Fetch and update country if not already set
-    if (!storedData.country) {
-      fetchCountry().then((country) => {
-        const updatedData = { ...storedData, country };
-        localStorage.setItem("visitorData", JSON.stringify(updatedData));
-        setVisitorData(updatedData);
+
+    // Fetch and update IP, country, and city if not already set
+    if (!storedData.ip || !storedData.country || !storedData.city) {
+      fetchUserLocation().then((location) => {
+        if (location) {
+          const updatedData = {
+            ...storedData,
+            ip: location.ip,
+            country: location.country,
+            city: location.city,
+          };
+          localStorage.setItem("visitorData", JSON.stringify(updatedData));
+          setVisitorData(updatedData);
+        }
       });
     } else {
       setVisitorData(storedData);
     }
-  
+
     // Save the updated visitor data to localStorage
     localStorage.setItem("visitorData", JSON.stringify(storedData));
-  
+
     // Track the current page visit
     trackPageVisit(window.location.href);
-  
+
     // Listen for messages to track page visits from iframes or other sources
     const handleMessage = (event) => {
       if (event.data && event.data.type === "PAGE_URL") {
         trackPageVisit(event.data.url);
       }
     };
-  
+
     window.addEventListener("message", handleMessage);
-  
+
     // Cleanup event listener
     return () => {
       window.removeEventListener("message", handleMessage);
     };
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once
 
   return visitorData;
 };
@@ -624,7 +633,7 @@ const Chatbot = () => {
               )}
             </div>
 
-            <div className="p-1 flex items-center rounded-lg mb-5 w-[350px] border border-gray-300 mx-auto">
+            <div className="p-1 flex items-center rounded-lg mb-5 w-[320px] border border-gray-300 mx-auto">
               <button
                 onClick={() => setShowPicker(!showPicker)}
                 className="p-2 bg-gray-200 rounded-full hover:bg-gray-300"
