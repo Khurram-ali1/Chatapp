@@ -633,7 +633,7 @@ const Chatbot = () => {
               )}
             </div>
 
-            <div className="p-1 flex items-center rounded-lg mb-5 w-[320px] border border-gray-300 mx-auto">
+            <div className="p-1 flex items-center rounded-lg mb-5 w-[370px] border border-gray-300 mx-auto input-container">  
               <button
                 onClick={() => setShowPicker(!showPicker)}
                 className="p-2 bg-gray-200 rounded-full hover:bg-gray-300"
