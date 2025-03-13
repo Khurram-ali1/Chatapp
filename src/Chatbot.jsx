@@ -87,6 +87,13 @@ const useVisitorTracking = () => {
       storedData = { visitedPages: [], country: null, visitorCount: 0 };
     }
   
+    // Check if it's the first visit
+    if (!localStorage.getItem("visitorHasVisited")) {
+      // Increment visitor count for the first visit
+      storedData.visitorCount = (storedData.visitorCount || 0) + 1;
+      localStorage.setItem("visitorHasVisited", "true"); // Set the flag
+    }
+  
     // Fetch and update country if not already set
     if (!storedData.country) {
       fetchCountry().then((country) => {
@@ -98,13 +105,8 @@ const useVisitorTracking = () => {
       setVisitorData(storedData);
     }
   
-    // Increment visitor count if it's the first visit
-    if (!localStorage.getItem("visitorHasVisited")) {
-      storedData.visitorCount = (storedData.visitorCount || 0) + 1;
-      localStorage.setItem("visitorHasVisited", "true");
-      localStorage.setItem("visitorData", JSON.stringify(storedData));
-      setVisitorData(storedData);
-    }
+    // Save the updated visitor data to localStorage
+    localStorage.setItem("visitorData", JSON.stringify(storedData));
   
     // Track the current page visit
     trackPageVisit(window.location.href);
@@ -344,7 +346,7 @@ const Chatbot = () => {
         )}
 
         {isOpen && !isHomeOpen && (
-          <div className="flex flex-col h-[650px] w-[90vw] max-w-[400px] bg-gray-100 rounded-2xl shadow-2xl">
+          <div className="flex flex-col h-[550px] w-[80vw] max-w-[400px] bg-gray-100 rounded-2xl shadow-2xl">
             <div className="bg-blue-600 text-white p-4 rounded-t-2xl">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold flex items-center">
@@ -418,7 +420,7 @@ const Chatbot = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 30 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="flex flex-col h-[650px] w-[90vw] max-w-[400px] bg-gray-100 rounded-2xl shadow-2xl"
+            className="flex flex-col h-[550px] w-[80vw] max-w-[400px] bg-gray-100 rounded-2xl shadow-2xl"
           >
             <div className="flex justify-between items-center bg-white text-black p-4 rounded-t-2xl">
               <div
