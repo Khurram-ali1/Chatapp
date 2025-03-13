@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+@media (max-width: 640px) {
+    .chat-container {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+    }
+  }
