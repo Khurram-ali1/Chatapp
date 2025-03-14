@@ -20,22 +20,17 @@ const useVisitorTracking = () => {
     ip: null, // Add IP address to the state
     country: null,
     city: null,
-    visitorCount: 0,
+    visitorCount: 1,
   });
 
   // Fetch visitor's IP address, country, and city
   const fetchUserLocation = async () => {
-    const token = "YOUR-TOKEN"; // Replace with your ipinfo.io token
+    const token = "251c53934f5c5b"; // Replace with your ipinfo.io token
 
     try {
       // Fetch details for the user's IP address
       const response = await fetch(`https://ipinfo.io/json?token=${token}`);
       const data = await response.json();
-
-      // Log the user's IP address, country, and city to the console
-      console.log("User IP Address:", data.ip);
-      console.log("User Country:", data.country);
-      console.log("User City:", data.city);
 
       return {
         ip: data.ip || null,
@@ -53,7 +48,9 @@ const useVisitorTracking = () => {
     const now = new Date().toISOString();
 
     setVisitorData((prev) => {
-      const updatedPages = Array.isArray(prev.visitedPages) ? prev.visitedPages : [];
+      const updatedPages = Array.isArray(prev.visitedPages)
+        ? prev.visitedPages
+        : [];
 
       // Check if the page has already been visited
       if (!updatedPages.some((entry) => entry.page === pageURL)) {
@@ -86,13 +83,19 @@ const useVisitorTracking = () => {
       };
     } catch (error) {
       console.error("Error parsing visitor data:", error);
-      storedData = { visitedPages: [], ip: null, country: null, city: null, visitorCount: 0 };
+      storedData = {
+        visitedPages: [],
+        ip: null,
+        country: null,
+        city: null,
+        visitorCount: 0,
+      };
     }
 
     // Check if it's the first visit
     if (!localStorage.getItem("visitorHasVisited")) {
       // Increment visitor count for the first visit
-      storedData.visitorCount = (storedData.visitorCount || 0) + 1;
+      storedData.visitorCount = (storedData.visitorCount || 1) + 1;
       localStorage.setItem("visitorHasVisited", "true"); // Set the flag
     }
 
@@ -141,35 +144,21 @@ const useVisitorTracking = () => {
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isHomeOpen, setIsHomeOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { id: 1, text: "Hello!", sender: "user", read: false },
-    { id: 2, text: "Hi there!", sender: "bot" },
-  ]);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [chatHistory, setChatHistory] = useState({
+    1: [
+      { id: 1, text: "support", sender: "user", read: false },
+      { id: 2, text: "👋 Hi! How can we help?", sender: "bot" },
+    ],
+    2: [
+      { id: 1, text: "How can I help you?", sender: "bot" },
+      { id: 2, text: "I need support with my account.", sender: "user", read: false },
+    ],
+  });
   const [homemessages, setHomeMessages] = useState([
-    {
-      id: 1,
-      sender: "support",
-      text: "👋 Hi! How can we help?",
-      time: "Just Now",
-    },
-    {
-      id: 2,
-      sender: "user",
-      text: "I have a question",
-      time: "March 4, 21:18",
-    },
-    {
-      id: 3,
-      sender: "user",
-      text: "Sorry to keep you waiting...",
-      time: "March 3, 20:38",
-    },
-    {
-      id: 4,
-      sender: "user",
-      text: "How can i get your website...",
-      time: "April 15, 20:38",
-    },
+    { id: 1, sender: "support", text: "👋 Hi! How can we help?", time: "Just Now" },
+    { id: 2, sender: "user", text: "I need support with my account.", time: "March 4, 21:18" },
   ]);
   const [input, setInput] = useState("");
   const [showPicker, setShowPicker] = useState(false);
@@ -182,6 +171,7 @@ const Chatbot = () => {
   const chatRef = useRef(null);
 
   const visitorData = useVisitorTracking();
+  console.log("Visitor Data", visitorData);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -240,7 +230,13 @@ const Chatbot = () => {
   const updateMessages = (newMessage) => {
     setMessages((prev) => {
       const updatedMessages = [...prev, newMessage];
-      localStorage.setItem("chatMessages", JSON.stringify(updatedMessages));
+      // Update chat history for the selected chat
+      setChatHistory((prevHistory) => ({
+        ...prevHistory,
+        [selectedChat]: updatedMessages,
+      }));
+      // Update homemessages to reflect the latest message
+      updateHomeMessages(selectedChat, newMessage);
       return updatedMessages;
     });
 
@@ -262,10 +258,17 @@ const Chatbot = () => {
 
       setMessages((prevMessages) => {
         const updatedMessages = [...prevMessages, botResponse];
+        // Mark all user messages as read
         const finalMessages = updatedMessages.map((msg) =>
-          msg.sender === "user" && !msg.read ? { ...msg, read: true } : msg
+          msg.sender === "user" ? { ...msg, read: true } : msg
         );
-        localStorage.setItem("chatMessages", JSON.stringify(finalMessages));
+        // Update chat history for the selected chat
+        setChatHistory((prevHistory) => ({
+          ...prevHistory,
+          [selectedChat]: finalMessages,
+        }));
+        // Update homemessages to reflect the latest message
+        updateHomeMessages(selectedChat, botResponse);
         return finalMessages;
       });
 
@@ -273,12 +276,45 @@ const Chatbot = () => {
     }, 2000);
   };
 
-  useEffect(() => {
-    const storedMessages = localStorage.getItem("chatMessages");
-    if (storedMessages) {
-      setMessages(JSON.parse(storedMessages));
-    }
-  }, []);
+  const updateHomeMessages = (chatId, newMessage) => {
+    setHomeMessages((prev) => {
+      // Only update if the message is from the user
+      if (newMessage.sender === "user") {
+        const updatedMessages = prev.map((msg) =>
+          msg.id === chatId
+            ? { ...msg, text: newMessage.text, time: newMessage.timestamp }
+            : msg
+        );
+        return updatedMessages;
+      }
+      return prev; // Ignore bot messages
+    });
+  };
+
+  const handleNewConversation = () => {
+    const newChatId = Date.now(); // Use a unique ID for the new chat
+    setSelectedChat(newChatId);
+    setMessages([]); // Reset messages for the new chat
+
+    // Add the new chat to chatHistory
+    setChatHistory((prev) => ({
+      ...prev,
+      [newChatId]: [],
+    }));
+
+    // Add the new chat to homemessages
+    setHomeMessages((prev) => [
+      ...prev,
+      {
+        id: newChatId,
+        sender: "user",
+        text: "New conversation started",
+        time: new Date().toLocaleTimeString(),
+      },
+    ]);
+
+    setIsHomeOpen(true); // Open the chat screen
+  };
 
   const handleEmojiClick = (emojiObject) => {
     setInput((prev) => prev + emojiObject.emoji);
@@ -291,14 +327,12 @@ const Chatbot = () => {
   const handleReaction = (index, emoji) => {
     const updatedMessages = [...messages];
     if (updatedMessages[index].reaction === emoji) {
-      // If the same reaction is clicked again, remove it
       updatedMessages[index].reaction = null;
     } else {
-      // Otherwise, replace the previous reaction
       updatedMessages[index].reaction = emoji;
     }
     setMessages(updatedMessages);
-    setActiveReactionPicker(null); // Close the reaction picker
+    setActiveReactionPicker(null);
   };
 
   return (
@@ -376,30 +410,31 @@ const Chatbot = () => {
 
             <div className="flex-1 overflow-y-auto p-4">
               <h3 className="font-semibold text-lg mb-2">Conversations</h3>
-              {homemessages.map((msg) => (
+              {homemessages
+              .filter((msg) => msg.sender === "user").map((msg) => (
                 <div
                   key={msg.id}
                   className="bg-white p-3 my-2 rounded-lg shadow hover:shadow-md hover:bg-gray-50 transition-all duration-200 cursor-pointer"
                   onClick={() => {
-                    console.log("Clicked message:", msg.id);
+                    setSelectedChat(msg.id); // Set the selected chat ID
+                    setMessages(chatHistory[msg.id] || []); // Load messages for the selected chat
+                    setIsHomeOpen(true); // Open the chat screen
                   }}
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100">
-                      {msg.sender === "support" ? (
-                        <img src={Bot} alt="Bot" className="w-6 h-6" />
-                      ) : (
+                      
                         <img
-                          src={UserImage}
+                          src={profileImage || UserImage}
                           alt="User"
                           className="w-6 h-6 rounded-full"
                         />
-                      )}
+                      
                     </div>
 
                     <div className="flex-1">
                       <h4 className="font-semibold">
-                        {msg.sender === "support" ? "Customer Support" : "You"}
+                        You
                       </h4>
                       <p className="text-sm text-gray-600 truncate w-[230px]">
                         {msg.text}
@@ -414,7 +449,7 @@ const Chatbot = () => {
             <div className="p-3">
               <button
                 className="w-full flex items-center justify-center bg-blue-600 text-white text-lg font-semibold py-3 rounded-lg shadow-lg hover:cursor-pointer"
-                onClick={() => setIsHomeOpen(true)}
+                onClick={handleNewConversation}
               >
                 <Plus className="mr-2 w-5 h-5" />
                 New Conversation
@@ -519,7 +554,7 @@ const Chatbot = () => {
                         ? "bg-blue-600 text-white self-end shadow-md"
                         : "bg-gray-200 text-black self-start shadow"
                     }`}
-                    onClick={() => toggleReactionPicker(index)} // Click to open reaction picker
+                    onClick={() => toggleReactionPicker(index)}
                   >
                     {msg.text && <p>{msg.text}</p>}
                     {msg.file && (
@@ -569,7 +604,7 @@ const Chatbot = () => {
                           left: msg.sender === "user" ? "auto" : "0",
                           right: msg.sender === "user" ? "0" : "auto",
                         }}
-                        onClick={(e) => e.stopPropagation()} // Prevent click from closing the picker
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {["😀", "❤️", "😂", "😢", "👍", "👎"].map(
                           (emoji, i) => (
@@ -633,7 +668,7 @@ const Chatbot = () => {
               )}
             </div>
 
-            <div className="p-1 flex items-center rounded-lg mb-5 w-[370px] border border-gray-300 mx-auto input-container">  
+            <div className="p-1 flex items-center rounded-lg mb-5 w-[370px] border border-gray-300 mx-auto input-container">
               <button
                 onClick={() => setShowPicker(!showPicker)}
                 className="p-2 bg-gray-200 rounded-full hover:bg-gray-300"
@@ -678,4 +713,3 @@ const Chatbot = () => {
 };
 
 export default Chatbot;
-
